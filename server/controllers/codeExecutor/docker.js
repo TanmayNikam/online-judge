@@ -45,6 +45,10 @@ const killContainer = (container_id_name) => {
 // this fn copies file from server to docker container (in root directory)
 const copyFilesToDocker = (filePath, containerId) => {
   const filename = path.basename(filePath);
+  
+  // filePath = filePath.replace('\\','/')
+  // filePath = `codeFiles/${filename}`
+  console.log(filename , 'fe', filePath)
   return new Promise((resolve, reject) => {
     exec(
       `docker cp "${filePath}" ${containerId}:/${filename}`,
@@ -107,15 +111,15 @@ const fileExistsDocker = (filename, containerId) => {
 const details = {
   c: {
     compilerCmd: (id) => `gcc ${id}.c -o ${id}.out -lpthread -lrt`,
-    executorCmd: (id, testcase) => `echo "${testcase}"|./${id}.out`,
+    executorCmd: (id, testcase) => `"echo '${testcase}' |./${id}.out"`,
   },
   cpp: {
     compilerCmd: (id) => `g++ ${id}.cpp -o ${id}.out`,
-    executorCmd: (id) => `./${id}.out`,
+    executorCmd: (id,testCase) => `"echo '${testCase}' | ./${id}.out"`,
   },
   py: {
     compilerCmd: null,
-    executorCmd: (id) => `python ${id}`,
+    executorCmd: (id,testCase) => `"echo '${testCase}' | python ${id}"`,
   },
   js: {
     compilerCmd: null,
@@ -146,23 +150,24 @@ const compile = (containerId, filename, language) => {
 // Execute
 const execute = (containerId, id, testInput, language) => {
   const command = details[language].executorCmd
-    ? details[language].executorCmd(id)
+    ? details[language].executorCmd(id,testInput)
     : null;
+  console.log('command',command)
   return new Promise((resolve, reject) => {
     if (!command) return reject("Language Not Supported");
-    const cmd = spawn("docker", ["exec", "-i", `${containerId} ${command}`], {
+    const cmd = spawn("docker", ["exec", "-i", `${containerId}`,"sh -c", command], {
       shell: true,
     });
     cmd.on("spawn", () => {
       console.log("");
     });
-    cmd.stdin.on("error", (err) => {
-      reject({ msg: "on stdin error", error: `${err}` });
-    });
-    cmd.stdin.write(testInput);
-    cmd.stdin.end();
+    // cmd.stdin.on("error", (err) => {
+    //   reject({ msg: "on stdin error", error: `${err}` });
+    // });
+    // cmd.stdin.write(testInput);
+    // cmd.stdin.end();
     cmd.stderr.on("data", (data) => {
-      reject({ msg: "on stderr", stderr: `${data}` });
+      reject({ msg: "on exec stderr", stderr: `${data}` });
     });
     cmd.stdout.on("data", (data) => {
       console.log("data: ", data);

@@ -149,14 +149,17 @@ const execCodeAgainstTestcases = (filePath, testcases, language) => {
       //     ? languageSpecificDetails[language].inputFunction(test)
       //     : input,
       for (let index = 0; index < testcases.length; ++index) {
-        const {input,output} = testcases[index];
+        let {input,output} = testcases[index];
         const exOut = await execute(
           containerId,
           compiledId,
           input,
           language
         );
+        output = output.replace('\\n','\n')
         // if socket connection established then send to client the index of passed test case
+        console.log("exOut: ", JSON.stringify(exOut));
+        console.log("output: ", JSON.stringify(output));
         if (exOut !== output) {
           reject({
             msg: "on wrong answer",
